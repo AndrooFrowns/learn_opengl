@@ -1,14 +1,11 @@
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
-use learn_opengl::{
-    runner::Runner,
-    creating_a_window::CreatingAWindow,
-};
+use learn_opengl::*;
 
 /// Keeps track of the available runs
 pub struct Lister {
     /// List of available runs
-    exercises: Vec<Box<dyn Runner>>,
+    exercises: Vec<Box<dyn runner::Runner>>,
 }
 
 /// Possible ways to identify the run
@@ -23,8 +20,9 @@ pub struct RunIDNotFound;
 impl Lister {
     /// Creates a new list of the available runs for launching
     pub fn new() -> Self {
-        let exercises: Vec<Box<dyn Runner>> = vec![
-            Box::new(CreatingAWindow),
+        let exercises: Vec<Box<dyn runner::Runner>> = vec![
+            Box::new(creating_a_window::CreatingAWindow),
+            Box::new(hello_window::HelloWindow),
         ];
 
         Lister { exercises }
@@ -67,7 +65,7 @@ impl Display for Lister {
     }
 }
 
-fn describe_runner(runner: &dyn Runner) -> String {
+fn describe_runner(runner: &dyn runner::Runner) -> String {
     let chapter = runner.chapter();
     let section = runner.section();
     let name = runner.name();

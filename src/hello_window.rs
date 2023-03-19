@@ -2,36 +2,32 @@ use std::sync::mpsc::Receiver;
 use glfw::{Action, Context, Key};
 use crate::runner::Runner;
 
-pub struct CreatingAWindow;
+pub struct HelloWindow;
 
 const SCR_WIDTH: u32 = 800;
 const SCR_HEIGHT: u32 = 600;
 
-impl Runner for CreatingAWindow {
+impl Runner for HelloWindow {
     fn chapter(&self) -> i32 { 1 }
-    fn section(&self) -> i32 { 1 }
+    fn section(&self) -> i32 { 2 }
     fn name(&self) -> &'static str {
-        "creating a window"
+        "hello window"
     }
 
     fn run(&self) {
-        // glfw: initalize and configure
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
         glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
         glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
         #[cfg(target_os = "macos")]
         glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
 
-        // glfw window creation
-        let (mut window, events) =
-            glfw.create_window(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", glfw::WindowMode::Windowed)
-                .expect("Failed to create GLFW window");
+        let (mut window, events) = glfw.create_window(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", glfw::WindowMode::Windowed)
+            .expect("Failed to create GLFW window");
 
         window.make_current();
         window.set_key_polling(true);
         window.set_framebuffer_size_polling(true);
 
-        // gl: load all OpenGL function pointers
         gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
         // render loop
@@ -39,10 +35,20 @@ impl Runner for CreatingAWindow {
             // events
             process_events(&mut window, &events);
 
-            // glfw: swap buffers and poll IO events (keys presssed/released, mouse moved, etc)
+           // rendering commands
+            unsafe {
+                gl::ClearColor(0.2, 0.3, 0.3, 1.0);
+                gl::Clear(gl::COLOR_BUFFER_BIT);
+            }
+
+            // glfw: swap buffers and poll IO events
             window.swap_buffers();
             glfw.poll_events();
         }
+
+
+
+
     }
 }
 

@@ -2,11 +2,12 @@
 ## Learning OpenGL via Rust
 
 Starting from a base point of https://github.com/bwasty/learn-opengl-rs to make sure I can open an OpenGL window at all.
+Overall the instructions are following the guide from https://learnopengl.com for learning OpenGL.
 
 ### Getting Started 
 
 * [x] Creating a window
-* [ ] Hello Window
+* [x] Hello Window
 * [ ] Hello Triangle
 * [ ] Shaders
 * [ ] Textures

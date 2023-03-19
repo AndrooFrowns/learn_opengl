@@ -33,15 +33,15 @@ fn main() {
         match run_result {
             Ok(_) => { println!("========= DONE ==========") }
             Err(_) => {
-                printHelpOptions(&runner_list);
+                print_help_options(&runner_list);
             }
         }
     } else {
-        printHelpOptions(&runner_list);
+        print_help_options(&runner_list);
     }
 }
 
-fn printHelpOptions(list: &lister::Lister) {
+fn print_help_options(list: &lister::Lister) {
     println!("ID not found");
     println!("usage: <arg>");
     println!("arg: CHAPTER.SECTION or NAME");
