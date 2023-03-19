@@ -20,8 +20,8 @@ fn main() {
     if let Some(arg) = arg {
         let id = if arg.contains('.') {
             let args: Vec<&str> = arg.split('.').collect();
-            let chapter = args[0].parse::<i32>().expect("Invalid argument including string but not convertable to ints");
-            let section = args[1].parse::<i32>().expect("Invalid argument including string but not convertable to ints");
+            let chapter = args[0].parse::<i32>().expect("Period included in input with invalid Chapter ID before period.");
+            let section = args[1].parse::<i32>().expect("Period included in input with invalid Section ID after period.");
 
             RunID::Numeric { chapter, section }
         } else {
