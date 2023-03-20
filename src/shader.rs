@@ -5,7 +5,7 @@ use gl::types::{GLfloat, GLint, GLsizei, GLsizeiptr, GLuint};
 use glfw::{Action, Context, Key};
 use crate::runner::Runner;
 
-pub struct HelloTriangle;
+pub struct Shader;
 
 const SCR_WIDTH: u32 = 800;
 const SCR_HEIGHT: u32 = 600;
@@ -22,28 +22,56 @@ const INDEXES: [u32; 6] = [
     1, 2, 3, // second triangle
 ];
 
+//  // EXAMPLE of passing data from vertex shader to fragment shader
+// const VERTEX_SHADER_SOURCE: &str = r#"
+//     #version 330 core
+//     layout (location = 0) in vec3 aPos; // the position variable has attribute position zero
+//
+//     out vec4 vertexColor; // specify a color output to the fragment shader
+//
+//     void main() {
+//        gl_Position = vec4(aPos, 1.0); // see how we directly give a vec3 to vec4's consturctor
+//        vertexColor = vec4(0.5, 0.0, 0.0, 1.0); // set the output variable to a dark red
+//     }
+// "#;
+
+//  // EXAMPLE of using data from the vertex shader
+// const FRAGMENT_SHADER_SOURCE: &str = r#"
+//     #version 330 core
+//     out vec4 FragColor;
+//
+//     in vec4 vertexColor; // the input variable from the vertex shader (same name)
+//
+//     void main() {
+//        FragColor = vertexColor;
+//     }
+// "#;
+
 const VERTEX_SHADER_SOURCE: &str = r#"
     #version 330 core
     layout (location = 0) in vec3 aPos;
+
     void main() {
-       gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+       gl_Position = vec4(aPos, 1.0);
     }
 "#;
-
 
 const FRAGMENT_SHADER_SOURCE: &str = r#"
     #version 330 core
     out vec4 FragColor;
+
+    uniform vec4 ourColor; // set from OpenGL code
+
     void main() {
-       FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+       FragColor = ourColor;
     }
 "#;
 
-impl Runner for HelloTriangle {
+impl Runner for Shader {
     fn chapter(&self) -> i32 { 1 }
-    fn section(&self) -> i32 { 3 }
+    fn section(&self) -> i32 { 4 }
     fn name(&self) -> &'static str {
-        "hello triangle"
+        "shader"
     }
 
     fn run(&self) {
@@ -67,7 +95,7 @@ impl Runner for HelloTriangle {
         gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
         // Build and compile the shader program
-        let (shader_program,  VAO) = unsafe {
+        let (shader_program, VAO) = unsafe {
 
             // vertex shader
 
@@ -166,10 +194,23 @@ impl Runner for HelloTriangle {
 
             // Render
             unsafe {
+                // clear the colorbuffer
                 gl::ClearColor(0.2, 0.3, 0.3, 1.0);
                 gl::Clear(gl::COLOR_BUFFER_BIT);
 
+                // activate program
                 gl::UseProgram(shader_program);
+
+                // update the unfiorm color to rotate through rainbow
+                let time = glfw.get_time() as f32;
+                let green_value = time.sin() / 2.0 + 0.5;
+                let red_value = (time - 2.0 * std::f32::consts::FRAC_PI_3).sin() / 2.0 + 0.5;
+                let blue_value = (time + 2.0 * std::f32::consts::FRAC_PI_3).sin() / 2.0 + 0.5;
+                let our_color = CString::new("ourColor").unwrap();
+                let vertex_color_location = gl::GetUniformLocation(shader_program, our_color.as_ptr());
+                gl::Uniform4f(vertex_color_location, red_value, green_value, blue_value, 1.0);
+
+
                 gl::BindVertexArray(VAO);
                 gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, ptr::null());
             }
