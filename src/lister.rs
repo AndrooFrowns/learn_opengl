@@ -23,6 +23,7 @@ impl Lister {
         let exercises: Vec<Box<dyn runner::Runner>> = vec![
             Box::new(creating_a_window::CreatingAWindow),
             Box::new(hello_window::HelloWindow),
+            Box::new(hello_triangle::HelloTriangle),
         ];
 
         Lister { exercises }
