@@ -1,237 +1,100 @@
-use std::ffi::{c_void, CString};
-use std::ptr;
-use std::sync::mpsc::Receiver;
-use gl::types::{GLfloat, GLint, GLsizei, GLsizeiptr, GLuint};
-use glfw::{Action, Context, Key};
-use crate::runner::Runner;
+use std::ffi::CString;
+use std::io::Read;
+use gl::types::{GLchar, GLint, GLuint};
+use image::codecs::png::CompressionType::Default;
 
-pub struct Shader;
+pub struct Shader {
+    uid: GLuint,
+}
 
-const SCR_WIDTH: u32 = 800;
-const SCR_HEIGHT: u32 = 600;
+impl Shader {
+    pub fn new(vertex_path: &std::path::Path, fragment_path: &std::path::Path) -> Self {
+        let vertex_shader = read_file_to_Cstring(vertex_path);
+        let fragment_shader = read_file_to_Cstring(fragment_path);
 
-const VERTICES: [f32; 12] = [
-    0.5, 0.5, 0.0, // top right
-    0.6, -0.5, 0.0, // bottom right
-    -0.5, -0.5, 0.0, // bottom left
-    -0.5, 0.5, 0.0, // top left
-];
-
-const INDEXES: [u32; 6] = [
-    0, 1, 3, // first triangle
-    1, 2, 3, // second triangle
-];
-
-//  // EXAMPLE of passing data from vertex shader to fragment shader
-// const VERTEX_SHADER_SOURCE: &str = r#"
-//     #version 330 core
-//     layout (location = 0) in vec3 aPos; // the position variable has attribute position zero
-//
-//     out vec4 vertexColor; // specify a color output to the fragment shader
-//
-//     void main() {
-//        gl_Position = vec4(aPos, 1.0); // see how we directly give a vec3 to vec4's consturctor
-//        vertexColor = vec4(0.5, 0.0, 0.0, 1.0); // set the output variable to a dark red
-//     }
-// "#;
-
-//  // EXAMPLE of using data from the vertex shader
-// const FRAGMENT_SHADER_SOURCE: &str = r#"
-//     #version 330 core
-//     out vec4 FragColor;
-//
-//     in vec4 vertexColor; // the input variable from the vertex shader (same name)
-//
-//     void main() {
-//        FragColor = vertexColor;
-//     }
-// "#;
-
-const VERTEX_SHADER_SOURCE: &str = r#"
-    #version 330 core
-    layout (location = 0) in vec3 aPos;
-
-    void main() {
-       gl_Position = vec4(aPos, 1.0);
-    }
-"#;
-
-const FRAGMENT_SHADER_SOURCE: &str = r#"
-    #version 330 core
-    out vec4 FragColor;
-
-    uniform vec4 ourColor; // set from OpenGL code
-
-    void main() {
-       FragColor = ourColor;
-    }
-"#;
-
-impl Runner for Shader {
-    fn chapter(&self) -> i32 { 1 }
-    fn section(&self) -> i32 { 4 }
-    fn name(&self) -> &'static str {
-        "shader"
+        Shader { uid: compile_shader_program(&vertex_shader, &fragment_shader) }
     }
 
-    fn run(&self) {
-        // glfw: initalize and configure
-        let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
-        glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
-        glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
-        #[cfg(target_os = "macos")]
-        glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
+    pub fn useProgram(&self) {
+        unsafe {
+            gl::UseProgram(self.uid);
+        }
+    }
 
-        // glfw window creation
-        let (mut window, events) =
-            glfw.create_window(SCR_WIDTH, SCR_HEIGHT, self.name(), glfw::WindowMode::Windowed)
-                .expect("Failed to create GLFW window");
+    // Utility uniform functions
+    pub fn set_bool(&self, name: &CString, value: bool) {
+        unsafe {
+            gl::Uniform1i(gl::GetUniformLocation(self.uid, name.as_ptr()), value as i32);
+        }
+    }
 
-        window.make_current();
-        window.set_key_polling(true);
-        window.set_framebuffer_size_polling(true);
+    pub fn set_int(&self, name: &CString, value: i32) {
+        unsafe {
+            gl::Uniform1i(gl::GetUniformLocation(self.uid, name.as_ptr()), value);
+        }
+    }
 
-        // gl: load all OpenGL function pointers
-        gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
-
-        // Build and compile the shader program
-        let (shader_program, VAO) = unsafe {
-
-            // vertex shader
-
-            let vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
-            let c_str_vert = CString::new(VERTEX_SHADER_SOURCE.as_bytes()).unwrap();
-            gl::ShaderSource(vertex_shader, 1, &c_str_vert.as_ptr(), ptr::null());
-            gl::CompileShader(vertex_shader);
-
-            // check for shader compile errors
-            let mut success = gl::FALSE as GLint;
-            let mut info_log = Vec::with_capacity(512);
-            info_log.set_len(512 - 1); // subtract 1 to skip the trailing null character
-            gl::GetShaderiv(vertex_shader, gl::COMPILE_STATUS, &mut success);
-            if success != gl::TRUE as GLint {
-                gl::GetShaderInfoLog(vertex_shader, 512, ptr::null_mut(), info_log.as_mut_ptr() as *mut gl::types::GLchar);
-                println!("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{}", std::str::from_utf8(&info_log).unwrap());
-            }
-
-            // fragment shader
-
-            let fragment_shader = gl::CreateShader(gl::FRAGMENT_SHADER);
-            let c_str_frag = CString::new(FRAGMENT_SHADER_SOURCE.as_bytes()).unwrap();
-            gl::ShaderSource(fragment_shader, 1, &c_str_frag.as_ptr(), ptr::null());
-            gl::CompileShader(fragment_shader);
-
-            // check for shader compile errors
-            gl::GetShaderiv(fragment_shader, gl::COMPILE_STATUS, &mut success);
-            if success != gl::TRUE as GLint {
-                gl::GetShaderInfoLog(fragment_shader, 512, ptr::null_mut(), info_log.as_mut_ptr() as *mut gl::types::GLchar);
-                println!("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{}", std::str::from_utf8(&info_log).unwrap());
-            }
-
-            // link shaders
-
-            let shader_program = gl::CreateProgram();
-            gl::AttachShader(shader_program, vertex_shader);
-            gl::AttachShader(shader_program, fragment_shader);
-            gl::LinkProgram(shader_program);
-            // check for linking errors
-            gl::GetProgramiv(shader_program, gl::LINK_STATUS, &mut success);
-            if success != gl::TRUE as GLint {
-                gl::GetProgramInfoLog(shader_program, 512, ptr::null_mut(), info_log.as_mut_ptr() as *mut gl::types::GLchar);
-                println!("ERROR::SHADER::PROGRAM::COMPILATION_FAILED\n{}", std::str::from_utf8(&info_log).unwrap());
-            }
-            gl::DeleteShader(vertex_shader);
-            gl::DeleteShader(fragment_shader);
-
-            // gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 3 * std::mem::size_of::<GLfloat>() as gl::types::GLsizei, ptr::null());
-            // gl::EnableVertexAttribArray(0);
-
-            // feed in the data
-
-            let (mut VBO, mut VAO, mut EBO) = (0, 0, 0);
-            gl::GenVertexArrays(1, &mut VAO);
-            gl::GenBuffers(1, &mut VBO);
-            gl::GenBuffers(1, &mut EBO);
-
-            // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-            gl::BindVertexArray(VAO);
-
-            gl::BindBuffer(gl::ARRAY_BUFFER, VBO);
-            gl::BufferData(gl::ARRAY_BUFFER,
-                           (VERTICES.len() * std::mem::size_of::<GLfloat>()) as gl::types::GLsizeiptr,
-                           &VERTICES[0] as *const f32 as *const c_void,
-                           gl::STATIC_DRAW);
-
-            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, EBO);
-            gl::BufferData(gl::ELEMENT_ARRAY_BUFFER,
-                           (INDEXES.len() * std::mem::size_of::<GLuint>()) as GLsizeiptr,
-                           &INDEXES[0] as *const u32 as *const c_void,
-                           gl::STATIC_DRAW);
-
-            gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 3 * std::mem::size_of::<GLfloat>() as gl::types::GLsizei, ptr::null());
-            gl::EnableVertexAttribArray(0);
-
-            // note that this is allowed, the call to gl::VertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-            gl::BindBuffer(gl::ARRAY_BUFFER, 0);
-
-            // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-            // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
-            gl::BindVertexArray(0);
-
-            // uncomment this call to draw in wireframe polygons.
-            // gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
-
-            (shader_program, VAO)
-        };
-
-        // uncomment this call to draw in wireframe polygons.
-        // gl::PolygonMode(gl::FRONT_AND_BACK, gl::LINE);
-
-        // render loop
-        while !window.should_close() {
-            // events
-            process_events(&mut window, &events);
-
-            // Render
-            unsafe {
-                // clear the colorbuffer
-                gl::ClearColor(0.2, 0.3, 0.3, 1.0);
-                gl::Clear(gl::COLOR_BUFFER_BIT);
-
-                // activate program
-                gl::UseProgram(shader_program);
-
-                // update the unfiorm color to rotate through rainbow
-                let time = glfw.get_time() as f32;
-                let green_value = time.sin() / 2.0 + 0.5;
-                let red_value = (time - 2.0 * std::f32::consts::FRAC_PI_3).sin() / 2.0 + 0.5;
-                let blue_value = (time + 2.0 * std::f32::consts::FRAC_PI_3).sin() / 2.0 + 0.5;
-                let our_color = CString::new("ourColor").unwrap();
-                let vertex_color_location = gl::GetUniformLocation(shader_program, our_color.as_ptr());
-                gl::Uniform4f(vertex_color_location, red_value, green_value, blue_value, 1.0);
-
-
-                gl::BindVertexArray(VAO);
-                gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, ptr::null());
-            }
-
-            // glfw: swap buffers and poll IO events (keys presssed/released, mouse moved, etc)
-            window.swap_buffers();
-            glfw.poll_events();
+    pub fn set_float(&self, name: &CString, value: f32) {
+        unsafe {
+            gl::Uniform1f(gl::GetUniformLocation(self.uid, name.as_ptr()), value);
         }
     }
 }
 
-fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>) {
-    for (_, event) in glfw::flush_messages(events) {
-        match event {
-            glfw::WindowEvent::FramebufferSize(width, height) => {
-                // make sure the viewport matches the new window dimesnions.
-                // note that the width and height will be significantly larger than specified on retina displays
-                unsafe { gl::Viewport(0, 0, width, height) }
+fn read_file_to_Cstring(path: &std::path::Path) -> CString {
+    let mut file = std::fs::File::open(path).expect(&*format!("Failed to open: {}", path.display()));
+    let mut text = std::default::Default::default();
+    file.read_to_string(&mut text).expect(&*format!("Failed to read: {}", path.display()));
+
+    CString::new(text.as_bytes()).expect(&*format!("Failed to convert: {}", path.display()))
+}
+
+fn compile_shader_program(vertex_shader: &CString, fragment_shader: &CString) -> GLuint {
+    let id;
+    unsafe {
+        let vertex = gl::CreateShader(gl::VERTEX_SHADER);
+        gl::ShaderSource(vertex, 1, &vertex_shader.as_ptr(), std::ptr::null());
+        gl::CompileShader(vertex);
+        check_compile_errors(vertex, "VERTEX");
+
+        let fragment = gl::CreateShader(gl::FRAGMENT_SHADER);
+        gl::ShaderSource(fragment, 1, &fragment_shader.as_ptr(), std::ptr::null());
+        gl::CompileShader(fragment);
+        check_compile_errors(fragment, "FRAGMENT");
+
+        id = gl::CreateProgram();
+        gl::AttachShader(id, vertex);
+        gl::AttachShader(id, fragment);
+        gl::LinkProgram(id);
+        check_compile_errors(id, "PROGRAM");
+
+        gl::DeleteShader(vertex);
+        gl::DeleteShader(fragment);
+    }
+
+    id
+}
+
+fn check_compile_errors(id: GLuint, name: &str) {
+    let mut success = gl::FALSE as GLint;
+    let mut info_log = std::vec::Vec::with_capacity(1024);
+    unsafe {
+        info_log.set_len(1024 - 1); // subtract 1 to keep a trailing null char
+
+        if name != "PROGRAM" {
+            gl::GetShaderiv(id, gl::COMPILE_STATUS, &mut success);
+            if success != gl::TRUE as GLint {
+                gl::GetShaderInfoLog(id, 1024, std::ptr::null_mut(), info_log.as_mut_ptr() as *mut GLchar);
+                let info_log = std::str::from_utf8(&info_log).unwrap();
+                panic!("ERROR::{name}:\n{info_log}\n");
             }
-            glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => window.set_should_close(true),
-            _ => {}
+        } else {
+            gl::GetProgramiv(id, gl::LINK_STATUS, &mut success);
+            if success != gl::TRUE as GLint {
+                gl::GetProgramInfoLog(id, 1024, std::ptr::null_mut(), info_log.as_mut_ptr() as *mut GLchar);
+                let info_log = std::str::from_utf8(&info_log).unwrap();
+                panic!("ERROR::{name}:\n{info_log}\n");
+            };
         }
     }
 }

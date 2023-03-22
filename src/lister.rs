@@ -21,10 +21,10 @@ impl Lister {
     /// Creates a new list of the available runs for launching
     pub fn new() -> Self {
         let exercises: Vec<Box<dyn runner::Runner>> = vec![
-            Box::new(creating_a_window::CreatingAWindow),
-            Box::new(hello_window::HelloWindow),
-            Box::new(hello_triangle::HelloTriangle),
-            Box::new(shader::Shader),
+            Box::new(exercises::creating_a_window::CreatingAWindow),
+            Box::new(exercises::hello_window::HelloWindow),
+            Box::new(exercises::hello_triangle::HelloTriangle),
+            Box::new(exercises::shader::Shader),
         ];
 
         Lister { exercises }
