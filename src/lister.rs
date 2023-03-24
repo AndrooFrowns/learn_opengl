@@ -25,6 +25,7 @@ impl Lister {
             Box::new(exercises::hello_window::HelloWindow),
             Box::new(exercises::hello_triangle::HelloTriangle),
             Box::new(exercises::shader::Shader),
+            Box::new(exercises::textures::Textures),
         ];
 
         Lister { exercises }
