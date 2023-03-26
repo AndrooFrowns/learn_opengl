@@ -40,7 +40,7 @@ impl Runner for Textures {
         // gl: load all OpenGL function pointers
         gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
-        let (shaderProgram, VBO, VAO, EBO, texture) = unsafe {
+        let (shaderProgram, VBO, VAO, EBO, texture1, texture2) = unsafe {
             // build and compile the shader program.
             let vert_path = std::path::Path::new("shaders/1.4.texture.vert");
             let frag_path = std::path::Path::new("shaders/1.4.texture.frag");
@@ -95,9 +95,9 @@ impl Runner for Textures {
             gl::VertexAttribPointer(2, 2, gl::FLOAT, gl::FALSE, stride, (6 * std::mem::size_of::<GLfloat>()) as *const c_void);
             gl::EnableVertexAttribArray(2);
 
-            let mut texture = 0;
-            gl::GenTextures(1, &mut texture);
-            gl::BindTexture(gl::TEXTURE_2D, texture); // all upcoming GL_TEXTURE_2D ops now affect this texture object
+            let mut texture_1 = 0;
+            gl::GenTextures(1, &mut texture_1);
+            gl::BindTexture(gl::TEXTURE_2D, texture_1); // all upcoming GL_TEXTURE_2D ops now affect this texture object
 
             // set the texture wrapping parameters
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
@@ -120,7 +120,46 @@ impl Runner for Textures {
                            data.as_ptr() as *const c_void);
             gl::GenerateMipmap(gl::TEXTURE_2D);
 
-            (shaderProgram, VBO, VAO, EBO, texture)
+            let mut texture_2 = 0;
+            gl::GenTextures(1, &mut texture_2);
+            gl::BindTexture(gl::TEXTURE_2D, texture_2); // all upcoming GL_TEXTURE_2D ops now affect this texture object
+
+            // set the texture wrapping parameters
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+
+            // set the texture filtering parameters
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+
+            let img = image::open(&std::path::Path::new("textures/awesomeface.png")).expect("failed to load texture");
+            let img = img.flipv();
+            let data = img.as_bytes();
+            gl::TexImage2D(gl::TEXTURE_2D,
+                           0,
+                           gl::RGB as i32,
+                           img.width() as i32,
+                           img.height() as i32,
+                           0,
+                           gl::RGBA,
+                           gl::UNSIGNED_BYTE,
+                           data.as_ptr() as *const c_void);
+            gl::GenerateMipmap(gl::TEXTURE_2D);
+
+            // tell opelgl for each sampler which texture unit it belongs to.
+
+            shaderProgram.useProgram();
+            // either set it manually like:
+            // gl::uniform1i(gl::GetUniformLocation(shaderProgram.get_id(), c_str!("texture1").as_ptr()), 0); // using c_str! to avoid runtime overhead
+            // or set it ivia the texture class
+            shaderProgram.set_int(&std::ffi::CString::new("texture1").unwrap(), 0);
+            shaderProgram.set_int(&std::ffi::CString::new("texture2").unwrap(), 1);
+
+            shaderProgram.set_float(&std::ffi::CString::new("ratio").unwrap(), 0.0);
+
+
+
+            (shaderProgram, VBO, VAO, EBO, texture_1, texture_2)
         };
 
         // render loop
@@ -132,8 +171,16 @@ impl Runner for Textures {
                 gl::ClearColor(0.2, 0.3, 0.3, 1.0);
                 gl::Clear(gl::COLOR_BUFFER_BIT);
 
-                gl::BindTexture(gl::TEXTURE_2D, texture);
+                gl::ActiveTexture(gl::TEXTURE0);
+                gl::BindTexture(gl::TEXTURE_2D, texture1);
+                gl::ActiveTexture(gl::TEXTURE1);
+                gl::BindTexture(gl::TEXTURE_2D, texture2);
 
+                let time = glfw.get_time();
+                let ratio = ((time.sin() + 1.0) ) as f32;
+
+
+                shaderProgram.set_float(&std::ffi::CString::new("ratio").unwrap(), ratio );
 
                 shaderProgram.useProgram();
 

@@ -8,6 +8,10 @@ pub struct Shader {
 }
 
 impl Shader {
+    pub fn get_id(&self) -> GLuint {
+        self.uid
+    }
+
     pub fn new(vertex_path: &std::path::Path, fragment_path: &std::path::Path) -> Self {
         let vertex_shader = read_file_to_Cstring(vertex_path);
         let fragment_shader = read_file_to_Cstring(fragment_path);
