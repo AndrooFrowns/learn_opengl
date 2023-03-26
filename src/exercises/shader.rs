@@ -1,7 +1,7 @@
-use std::ffi::{c_void, CString};
+use std::ffi::c_void;
 use std::ptr;
 use std::sync::mpsc::Receiver;
-use gl::types::{GLfloat, GLint, GLsizei, GLsizeiptr, GLuint};
+use gl::types::{GLfloat, GLsizeiptr, GLuint};
 use glfw::{Action, Context, Key};
 use crate::runner::Runner;
 use crate::shader;
@@ -126,12 +126,14 @@ impl Runner for Shader {
 
 
         // Build and compile the shader program
+        #[allow(non_snake_case)]
         let (shader_program, VAO) = unsafe {
 
             let shader_program = shader::Shader::new(vertex_path, fragment_path);
 
             // feed in the data
 
+            #[allow(non_snake_case)]
             let (mut VBO, mut VAO, mut EBO) = (0, 0, 0);
             gl::GenVertexArrays(1, &mut VAO);
             gl::GenBuffers(1, &mut VBO);
@@ -187,7 +189,7 @@ impl Runner for Shader {
                 gl::Clear(gl::COLOR_BUFFER_BIT);
 
                 // activate program
-                shader_program.useProgram();
+                shader_program.use_program();
 
 
                 gl::BindVertexArray(VAO);

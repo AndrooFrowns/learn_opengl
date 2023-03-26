@@ -8,7 +8,7 @@ type Matrix4 = cgmath::Matrix4<f32>;
 
 // Defines several possible options for camera movement. Used as an abstraction to stay away from window-system specific input methods
 #[derive(PartialEq, Clone, Copy)]
-pub enum Camera_Movement {
+pub enum CameraMovement {
     FORWARD,
     BACKWARD,
     LEFT,
@@ -24,113 +24,111 @@ const ZOOM: f32 = 45.0;
 
 pub struct Camera {
     // Camera Atributes
-    Position: Point3,
-    Front: Vector3,
-    Up: Vector3,
-    Right: Vector3,
-    WorldUp: Vector3,
+    position: Point3,
+    front: Vector3,
+    up: Vector3,
+    right: Vector3,
+    world_up: Vector3,
 
     // Euler Angles
-    Yaw: f32,
-    Pitch: f32,
+    yaw: f32,
+    pitch: f32,
 
     // Camera Options
-    MovementSpeed: f32,
-    MouseSensitivity: f32,
-    Zoom: f32,
+    movement_speed: f32,
+    mouse_sensitivity: f32,
+    zoom: f32,
 }
 
-use self::Camera_Movement::*;
+use self::CameraMovement::*;
 
 impl Default for Camera {
     fn default() -> Self {
         let mut camera = Camera {
-            Position: Point3::new(0.0, 0.0, 0.0),
-            Front: vec3(0.0, 0.0, -1.0),
-            Up: Vector3::zero(),
-            Right: Vector3::zero(),
-            WorldUp: Vector3::unit_y(),
-            Yaw: YAW,
-            Pitch: PITCH,
-            MovementSpeed: SPEED,
-            MouseSensitivity: SENSITIVITY,
-            Zoom: ZOOM,
+            position: Point3::new(0.0, 0.0, 0.0),
+            front: vec3(0.0, 0.0, -1.0),
+            up: Vector3::zero(),
+            right: Vector3::zero(),
+            world_up: Vector3::unit_y(),
+            yaw: YAW,
+            pitch: PITCH,
+            movement_speed: SPEED,
+            mouse_sensitivity: SENSITIVITY,
+            zoom: ZOOM,
         };
 
-        camera.updateCameraVectors();
+        camera.update_camera_vectors();
         camera
     }
 }
 
 impl Camera {
     pub fn get_zoom(&self) -> f32 {
-        self.Zoom
+        self.zoom
     }
 
     /// creates a camera at the point described
     pub fn new(pt: Point3) -> Self {
         Camera {
-            Position: pt,
+            position: pt,
             ..Camera::default()
         }
     }
 
     /// Returns the view matrix calculated using Euler Angles and the look at matrix
-    pub fn GetViewMatrix(&self) -> Matrix4 {
-        Matrix4::look_at(self.Position, self.Position + self.Front, self.Up)
+    pub fn get_view_matrix(&self) -> Matrix4 {
+        Matrix4::look_at_rh(self.position, self.position + self.front, self.up)
     }
 
     /// processes input recieved from any keyboard like input system. Accepts input parameter in the form of camera defined ENUM to abstract from windowing systems
-    pub fn ProcessKeyboard(&mut self, direction: Camera_Movement, delta_time: f32) {
-        let velocity = self.MovementSpeed * delta_time;
+    pub fn process_keyboard(&mut self, direction: CameraMovement, delta_time: f32) {
+        let velocity = self.movement_speed * delta_time;
         match direction {
-            FORWARD => self.Position += self.Front * velocity,
-            BACKWARD => self.Position -= self.Front * velocity,
-            LEFT => self.Position -= self.Right * velocity,
-            RIGHT => self.Position += self.Right * velocity,
+            FORWARD => self.position += self.front * velocity,
+            BACKWARD => self.position -= self.front * velocity,
+            LEFT => self.position -= self.right * velocity,
+            RIGHT => self.position += self.right * velocity,
         };
     }
 
     /// processes input received from a mouse input system. Expects the offset value in both the x and y directions.
-    pub fn ProcessMouseMovement(&mut self, mut xoffset: f32, mut yoffset: f32, constrain_pitch: bool) {
-        xoffset *= self.MouseSensitivity;
-        yoffset *= self.MouseSensitivity;
+    pub fn process_mouse_movement(&mut self, mut xoffset: f32, mut yoffset: f32, constrain_pitch: bool) {
+        xoffset *= self.mouse_sensitivity;
+        yoffset *= self.mouse_sensitivity;
 
-        self.Yaw += xoffset;
-        self.Yaw %= 360.0;
+        self.yaw += xoffset;
+        self.yaw %= 360.0;
 
-        self.Pitch += yoffset;
+        self.pitch += yoffset;
 
         // make sure that pitch doesn't cause screen to flip
         if constrain_pitch {
-            self.Pitch = self.Pitch.min(89.0);
-            self.Pitch = self.Pitch.max(-89.0);
+            self.pitch = self.pitch.min(89.0);
+            self.pitch = self.pitch.max(-89.0);
         }
 
-        self.Yaw;
-
         // update front right and up vectors using the update euler angles
-        self.updateCameraVectors();
+        self.update_camera_vectors();
     }
 
     /// Processes input received from a mouse scroll-wheel event only requires input on the vertical wheel-axis
-    pub fn ProcessMouseScroll(&mut self, yoffset: f32) {
-        self.Zoom -= yoffset;
-        self.Zoom = self.Zoom.max(1.0);
-        self.Zoom = self.Zoom.min(45.0);
+    pub fn process_mouse_scroll(&mut self, yoffset: f32) {
+        self.zoom -= yoffset;
+        self.zoom = self.zoom.max(1.0);
+        self.zoom = self.zoom.min(45.0);
     }
 
     /// Calculates the front vector from the camera's euler angles
-    fn updateCameraVectors(&mut self) {
+    fn update_camera_vectors(&mut self) {
         let front = Vector3 {
-            x: self.Yaw.to_radians().cos() * self.Pitch.to_radians().cos(),
-            y: self.Pitch.to_radians().sin(),
-            z: self.Yaw.to_radians().sin() * self.Pitch.to_radians().cos(),
+            x: self.yaw.to_radians().cos() * self.pitch.to_radians().cos(),
+            y: self.pitch.to_radians().sin(),
+            z: self.yaw.to_radians().sin() * self.pitch.to_radians().cos(),
         };
 
-        self.Front = front.normalize();
+        self.front = front.normalize();
         // also re-calculate the Right and Up vector
-        self.Right = self.Front.cross(self.WorldUp).normalize();
-        self.Up = self.Right.cross(self.Front).normalize();
+        self.right = self.front.cross(self.world_up).normalize();
+        self.up = self.right.cross(self.front).normalize();
     }
 }

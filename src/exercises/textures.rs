@@ -1,9 +1,7 @@
 use std::ffi::c_void;
-use std::fs::create_dir;
 use std::sync::mpsc::Receiver;
 use gl::types::{GLfloat, GLsizeiptr};
 use glfw::{Action, Context, Key};
-use crate::exercises::shader;
 use crate::runner::Runner;
 
 pub struct Textures;
@@ -40,11 +38,12 @@ impl Runner for Textures {
         // gl: load all OpenGL function pointers
         gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
+        #[allow(non_snake_case)]
         let (shaderProgram, VBO, VAO, EBO, texture1, texture2) = unsafe {
             // build and compile the shader program.
             let vert_path = std::path::Path::new("shaders/1.4.texture.vert");
             let frag_path = std::path::Path::new("shaders/1.4.texture.frag");
-            let shaderProgram = crate::shader::Shader::new(&vert_path, &frag_path);
+            let shaderProgram = crate::shader::Shader::new(vert_path, frag_path);
 
             // set up vertex data and buffeers and configure vertex attributes
             let vertices: [f32; 32] = [
@@ -107,7 +106,7 @@ impl Runner for Textures {
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-            let img = image::open(&std::path::Path::new("textures/container.jpg")).expect("failed to load texture");
+            let img = image::open(std::path::Path::new("textures/container.jpg")).expect("failed to load texture");
             let data = img.as_bytes();
             gl::TexImage2D(gl::TEXTURE_2D,
                            0,
@@ -132,7 +131,7 @@ impl Runner for Textures {
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
 
-            let img = image::open(&std::path::Path::new("textures/awesomeface.png")).expect("failed to load texture");
+            let img = image::open(std::path::Path::new("textures/awesomeface.png")).expect("failed to load texture");
             let img = img.flipv();
             let data = img.as_bytes();
             gl::TexImage2D(gl::TEXTURE_2D,
@@ -148,7 +147,7 @@ impl Runner for Textures {
 
             // tell opelgl for each sampler which texture unit it belongs to.
 
-            shaderProgram.useProgram();
+            shaderProgram.use_program();
             // either set it manually like:
             // gl::uniform1i(gl::GetUniformLocation(shaderProgram.get_id(), c_str!("texture1").as_ptr()), 0); // using c_str! to avoid runtime overhead
             // or set it ivia the texture class
@@ -177,12 +176,12 @@ impl Runner for Textures {
                 gl::BindTexture(gl::TEXTURE_2D, texture2);
 
                 let time = glfw.get_time();
-                let ratio = ((time.sin() + 1.0) ) as f32;
+                let ratio = (time.sin() + 1.0) as f32;
 
 
                 shaderProgram.set_float(&std::ffi::CString::new("ratio").unwrap(), ratio );
 
-                shaderProgram.useProgram();
+                shaderProgram.use_program();
 
                 gl::BindVertexArray(VAO);
                 gl::DrawElements(gl::TRIANGLES, 6, gl::UNSIGNED_INT, std::ptr::null());

@@ -2,7 +2,6 @@ use std::ffi::CString;
 use std::io::Read;
 use cgmath::{Matrix, Matrix4};
 use gl::types::{GLchar, GLint, GLuint};
-use image::codecs::png::CompressionType::Default;
 
 pub struct Shader {
     uid: GLuint,
@@ -14,13 +13,13 @@ impl Shader {
     }
 
     pub fn new(vertex_path: &std::path::Path, fragment_path: &std::path::Path) -> Self {
-        let vertex_shader = read_file_to_Cstring(vertex_path);
-        let fragment_shader = read_file_to_Cstring(fragment_path);
+        let vertex_shader = read_file_to_cstring(vertex_path);
+        let fragment_shader = read_file_to_cstring(fragment_path);
 
         Shader { uid: compile_shader_program(&vertex_shader, &fragment_shader) }
     }
 
-    pub fn useProgram(&self) {
+    pub fn use_program(&self) {
         unsafe {
             gl::UseProgram(self.uid);
         }
@@ -52,12 +51,15 @@ impl Shader {
     }
 }
 
-fn read_file_to_Cstring(path: &std::path::Path) -> CString {
-    let mut file = std::fs::File::open(path).expect(&*format!("Failed to open: {}", path.display()));
+fn read_file_to_cstring(path: &std::path::Path) -> CString {
+    #[allow(clippy::expect_fun_call)]
+    let mut file = std::fs::File::open(path).expect(&format!("Failed to open: {}", path.display()));
     let mut text = std::default::Default::default();
-    file.read_to_string(&mut text).expect(&*format!("Failed to read: {}", path.display()));
+    #[allow(clippy::expect_fun_call)]
+    file.read_to_string(&mut text).expect(&format!("Failed to read: {}", path.display()));
 
-    CString::new(text.as_bytes()).expect(&*format!("Failed to convert: {}", path.display()))
+    #[allow(clippy::expect_fun_call)]
+    CString::new(text.as_bytes()).expect(&format!("Failed to convert: {}", path.display()))
 }
 
 fn compile_shader_program(vertex_shader: &CString, fragment_shader: &CString) -> GLuint {
@@ -88,7 +90,7 @@ fn compile_shader_program(vertex_shader: &CString, fragment_shader: &CString) ->
 
 fn check_compile_errors(id: GLuint, name: &str) {
     let mut success = gl::FALSE as GLint;
-    let mut info_log = std::vec::Vec::with_capacity(1024);
+    let mut info_log = vec![0; 1024];
     unsafe {
         info_log.set_len(1024 - 1); // subtract 1 to keep a trailing null char
 

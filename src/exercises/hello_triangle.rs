@@ -1,7 +1,7 @@
 use std::ffi::{c_void, CString};
 use std::ptr;
 use std::sync::mpsc::Receiver;
-use gl::types::{GLfloat, GLint, GLsizei, GLsizeiptr, GLuint};
+use gl::types::{GLfloat, GLint, GLsizeiptr, GLuint};
 use glfw::{Action, Context, Key};
 use crate::runner::Runner;
 
@@ -67,6 +67,7 @@ impl Runner for HelloTriangle {
         gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
         // Build and compile the shader program
+        #[allow(non_snake_case)]
         let (shader_program,  VAO) = unsafe {
 
             // vertex shader
@@ -79,7 +80,7 @@ impl Runner for HelloTriangle {
             // check for shader compile errors
             let mut success = gl::FALSE as GLint;
             let mut info_log = Vec::with_capacity(512);
-            info_log.set_len(512 - 1); // subtract 1 to skip the trailing null character
+            info_log.resize(512 - 1, 0);
             gl::GetShaderiv(vertex_shader, gl::COMPILE_STATUS, &mut success);
             if success != gl::TRUE as GLint {
                 gl::GetShaderInfoLog(vertex_shader, 512, ptr::null_mut(), info_log.as_mut_ptr() as *mut gl::types::GLchar);
@@ -120,6 +121,7 @@ impl Runner for HelloTriangle {
 
             // feed in the data
 
+            #[allow(non_snake_case)]
             let (mut VBO, mut VAO, mut EBO) = (0, 0, 0);
             gl::GenVertexArrays(1, &mut VAO);
             gl::GenBuffers(1, &mut VBO);

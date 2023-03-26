@@ -1,9 +1,9 @@
 use std::ffi::c_void;
 use std::sync::mpsc::Receiver;
-use glfw::{Action, Context, Key};
+use glfw::Context;
 use crate::runner::Runner;
 
-use cgmath::{Matrix4, Vector3, vec3, Deg, perspective, Point3};
+use cgmath::{Matrix4, vec3, Deg, perspective, Point3};
 use cgmath::prelude::*;
 use gl::types::{GLfloat, GLsizei, GLsizeiptr};
 use crate::common::process_input;
@@ -24,13 +24,13 @@ impl Runner for Camera {
     fn run(&self) {
         let mut camera = crate::camera::Camera::new(Point3::new(0.0, 0.0, 3.0));
 
-        let mut firstMouse = true;
-        let mut lastX = SCR_WIDTH as f32 / 2.0;
-        let mut lastY = SCR_HEIGHT as f32 / 2.0;
+        let mut first_mouse = true;
+        let mut last_x = SCR_WIDTH as f32 / 2.0;
+        let mut last_y = SCR_HEIGHT as f32 / 2.0;
 
         // timing
-        let mut deltaTime: f32;
-        let mut lastFrameTime: f32 = 0.0;
+        let mut delta_time: f32;
+        let mut last_frame_time: f32 = 0.0;
 
         // Setup window initialization and configuration
         let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
@@ -54,14 +54,15 @@ impl Runner for Camera {
         // gl: load all OpenGL function pointers
         gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
-        let (shaderProgram, VBO, VAO, texture1, texture2, cubePositions) = unsafe {
+        #[allow(non_snake_case)]
+        let (shader_program, VBO, VAO, texture1, texture2, cubePositions) = unsafe {
             // configure the global opengl state
             gl::Enable(gl::DEPTH_TEST);
 
             // build and compile our shader program
-            let shaderProgram = shader::Shader::new(
-                &std::path::Path::new("shaders/1.8.camera.vert"),
-                &std::path::Path::new("shaders/1.8.camera.frag"),
+            let shader_program = shader::Shader::new(
+                std::path::Path::new("shaders/1.8.camera.vert"),
+                std::path::Path::new("shaders/1.8.camera.frag"),
             );
 
             // set up vertex data and buffer(s) for cube
@@ -105,7 +106,7 @@ impl Runner for Camera {
             ];
 
             // get world space positions of cubes
-            let cubePositions = [
+            let cube_positions = [
                 vec3(0.0f32, 0.0, 0.0),
                 vec3(2.0, 5.0, -15.0),
                 vec3(-1.5, -2.2, -2.5),
@@ -118,6 +119,7 @@ impl Runner for Camera {
                 vec3(-1.3, 1.0, -1.5),
             ];
 
+            #[allow(non_snake_case)]
             let (mut VBO, mut VAO) = (0, 0);
 
             gl::GenVertexArrays(1, &mut VAO);
@@ -153,7 +155,7 @@ impl Runner for Camera {
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
             // load image, create texture and generate mipmaps
-            let img = image::open(&std::path::Path::new("textures/container.jpg")).expect("Failed to load texture.");
+            let img = image::open(std::path::Path::new("textures/container.jpg")).expect("Failed to load texture.");
             let data = img.as_bytes();
             gl::TexImage2D(gl::TEXTURE_2D,
                            0,
@@ -175,7 +177,7 @@ impl Runner for Camera {
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
             // load image create texture and generate mipmaps
-            let img = image::open(&std::path::Path::new("textures/awesomeface.png")).expect("Failed to load texture");
+            let img = image::open(std::path::Path::new("textures/awesomeface.png")).expect("Failed to load texture");
             let img = img.flipv();
             let data = img.as_bytes();
             // note that the awesomeface.png has transparency and thus and alpha channel, so make sure to tell OpenGL the data type is of GL_RGBA
@@ -191,23 +193,23 @@ impl Runner for Camera {
             );
 
             // tell opegl for each sampler to which texture unit it belongs to
-            shaderProgram.useProgram();
-            shaderProgram.set_int(&std::ffi::CString::new("texture1").unwrap(), 0);
-            shaderProgram.set_int(&std::ffi::CString::new("texture2").unwrap(), 1);
+            shader_program.use_program();
+            shader_program.set_int(&std::ffi::CString::new("texture1").unwrap(), 0);
+            shader_program.set_int(&std::ffi::CString::new("texture2").unwrap(), 1);
 
-            (shaderProgram, VBO, VAO, texture1, texture2, cubePositions)
+            (shader_program, VBO, VAO, texture1, texture2, cube_positions)
         };
 
         while !window.should_close() {
-            let currentFrameTime = glfw.get_time() as f32;
-            deltaTime = currentFrameTime - lastFrameTime;
-            lastFrameTime = currentFrameTime;
+            let current_frame_time = glfw.get_time() as f32;
+            delta_time = current_frame_time - last_frame_time;
+            last_frame_time = current_frame_time;
 
             // event handle
-            crate::common::process_events(&events, &mut firstMouse, &mut lastX, &mut lastY, &mut camera);
+            crate::common::process_events(&events, &mut first_mouse, &mut last_x, &mut last_y, &mut camera);
 
             //input
-            process_input(&mut window, deltaTime, &mut camera);
+            process_input(&mut window, delta_time, &mut camera);
 
             unsafe {
                 gl::ClearColor(0.2, 0.3, 0.3, 1.0);
@@ -220,15 +222,15 @@ impl Runner for Camera {
                 gl::BindTexture(gl::TEXTURE_2D, texture2);
 
                 // activate shader
-                shaderProgram.useProgram();
+                shader_program.use_program();
 
                 // pass projection matrix to shader (note that in thiis case it cound change every frame)
                 let projection: Matrix4<f32> = perspective(Deg(camera.get_zoom()), SCR_WIDTH as f32 / SCR_HEIGHT as f32, 0.1, 100.0);
-                shaderProgram.set_mat4(&std::ffi::CString::new("projection").unwrap(), &projection);
+                shader_program.set_mat4(&std::ffi::CString::new("projection").unwrap(), &projection);
 
                 // camera view transformation
-                let view = camera.GetViewMatrix();
-                shaderProgram.set_mat4(&std::ffi::CString::new("view").unwrap(), &view);
+                let view = camera.get_view_matrix();
+                shader_program.set_mat4(&std::ffi::CString::new("view").unwrap(), &view);
 
                 // render boxes
                 gl::BindVertexArray(VAO);
@@ -236,7 +238,7 @@ impl Runner for Camera {
                     let mut model: Matrix4<f32> = Matrix4::from_translation(*position);
                     let angle = 20.0 * i as f32;
                     model = model * Matrix4::from_axis_angle(vec3(1.0, 0.3, 0.5).normalize(), Deg(angle));
-                    shaderProgram.set_mat4(&std::ffi::CString::new("model").unwrap(), &model);
+                    shader_program.set_mat4(&std::ffi::CString::new("model").unwrap(), &model);
 
                     gl::DrawArrays(gl::TRIANGLES, 0, 36);
                 }
@@ -253,4 +255,5 @@ impl Runner for Camera {
     }
 }
 
-fn process_events(window: &mut glfw::Window, events: &Receiver<(f64, glfw::WindowEvent)>) {}
+#[allow(dead_code)]
+fn process_events(_window: &mut glfw::Window, _events: &Receiver<(f64, glfw::WindowEvent)>) {}
