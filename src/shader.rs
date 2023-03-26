@@ -1,5 +1,6 @@
 use std::ffi::CString;
 use std::io::Read;
+use cgmath::{Matrix, Matrix4};
 use gl::types::{GLchar, GLint, GLuint};
 use image::codecs::png::CompressionType::Default;
 
@@ -41,6 +42,12 @@ impl Shader {
     pub fn set_float(&self, name: &CString, value: f32) {
         unsafe {
             gl::Uniform1f(gl::GetUniformLocation(self.uid, name.as_ptr()), value);
+        }
+    }
+
+    pub fn set_mat4(&self, name: &CString, value: &Matrix4<f32>) {
+        unsafe {
+            gl::UniformMatrix4fv(gl::GetUniformLocation(self.uid, name.as_ptr()), 1, gl::FALSE, value.as_ptr());
         }
     }
 }
